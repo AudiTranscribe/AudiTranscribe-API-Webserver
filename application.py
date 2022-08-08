@@ -5,11 +5,11 @@ import json
 import semver
 
 # SETUP
-app = Flask(__name__)
+application = Flask(__name__)
 
 
 # MAIN ROUTES
-@app.route("/versions")
+@application.route("/versions")
 def versions():
     """Get a list of the version tags."""
 
@@ -23,7 +23,7 @@ def versions():
     return [entry["name"] for entry in json_txt]
 
 
-@app.route("/latest-semver")
+@application.route("/latest-semver")
 def latest_semver():
     """Get the latest version tag in terms of semver versioning."""
 
@@ -48,7 +48,7 @@ def latest_semver():
     return response
 
 
-@app.route("/latest-chrono")
+@application.route("/latest-chrono")
 def latest_chronologically():
     """Get the latest tag in chronological order."""
 
@@ -60,4 +60,4 @@ def latest_chronologically():
 
 # MAIN CODE
 if __name__ == "__main__":
-    app.run()
+    application.run()

@@ -1,6 +1,6 @@
 # IMPORTS
-from application import app
+from application import application
 
 # MAIN CODE
 if __name__ == "__main__":
-    app.run()
+    application.run()
