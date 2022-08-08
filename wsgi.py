@@ -1,5 +1,5 @@
 # IMPORTS
-from app import app
+from application import app
 
 # MAIN CODE
 if __name__ == "__main__":
