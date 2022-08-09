@@ -27,7 +27,7 @@ if __name__ == "__main__":
     latestTimestamp = get_latest_commit_timestamp()
 
     # Create the ZIP file
-    name = f"Upload-{latestTimestamp}.zip"
+    name = f"API-Server-{latestTimestamp}.zip"
     with zipfile.ZipFile(name, "w") as f:
         # Add required files
         for file in FILES_TO_ADD:
