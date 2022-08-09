@@ -3,6 +3,8 @@ import json
 
 import semver
 from flask import Flask, make_response
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 from requests import get
 from werkzeug.exceptions import HTTPException
 
@@ -11,6 +13,11 @@ AUDITRANSCRIBE_REPO = "AudiTranscribe/AudiTranscribe"
 
 # SETUP
 application = Flask(__name__)
+limiter = Limiter(
+    application,
+    key_func=get_remote_address,
+    default_limits=["2/second"]
+)
 
 
 # HELPER FUNCTIONS
