@@ -1,5 +1,6 @@
 # IMPORTS
 import json
+import datetime
 
 import semver
 from flask import Flask, make_response
@@ -11,6 +12,8 @@ from werkzeug.exceptions import HTTPException
 # CONSTANTS
 AUDITRANSCRIBE_REPO = "AudiTranscribe/AudiTranscribe"
 
+CACHE_DURATION = 300  # In seconds, so 300 means 5 minutes
+
 # SETUP
 application = Flask(__name__)
 limiter = Limiter(
@@ -18,6 +21,9 @@ limiter = Limiter(
     key_func=get_remote_address,
     default_limits=["2/second"]
 )
+
+# GLOBAL VARIABLES
+cache = {}  # First element in tuple is the time of expiry, second element is the data itself
 
 
 # HELPER FUNCTIONS
@@ -45,20 +51,34 @@ def get_json_from_response(response):
 # MAIN ROUTES
 @application.route("/raw-tag-info")
 def get_raw_tag_info():
-    # Form the URL
-    url = f"https://api.github.com/repos/{AUDITRANSCRIBE_REPO}/tags"
+    # Get current time
+    now = round(datetime.datetime.now().timestamp())
 
-    # Send request to GitHub server for all the version tags
-    response = get(url)
-
-    if response.status_code == 200:
-        return make_json("OK", 200, raw_info=response.text)
+    # Check if there is a cache and that the cache has yet to expire
+    if "raw_tag_info" in cache and now <= cache["raw_tag_info"][0]:
+        raw_info = cache["raw_tag_info"][1]
     else:
-        return make_exception(
-            code=response.status_code,
-            name=response.reason,
-            description="Could not fetch tags"
-        )
+        # Form the URL
+        url = f"https://api.github.com/repos/{AUDITRANSCRIBE_REPO}/tags"
+
+        # Send request to GitHub server for all the version tags
+        response = get(url)
+
+        if response.status_code == 200:
+            # Save the response
+            raw_info = response.text
+
+            # Update cache
+            cache["raw_tag_info"] = (now + CACHE_DURATION, raw_info)
+        else:
+            return make_exception(
+                code=response.status_code,
+                name=response.reason,
+                description="Could not fetch tags"
+            )
+
+    # Return as JSON
+    return make_json("OK", 200, raw_info=raw_info)
 
 
 @application.route("/versions")
