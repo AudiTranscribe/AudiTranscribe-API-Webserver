@@ -6,13 +6,12 @@ import semver
 from flask import Flask, make_response, request
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from git import Repo
 from requests import get
 from werkzeug.exceptions import HTTPException
 
 # CONSTANTS
 AUDITRANSCRIBE_REPO = "AudiTranscribe/AudiTranscribe"
-
-CACHE_DURATION = 300  # In seconds, so 300 means 5 minutes
 
 # SETUP
 application = Flask(__name__)
@@ -23,10 +22,35 @@ limiter = Limiter(
 )
 
 # GLOBAL VARIABLES
-cache = {}  # First element in tuple is the time of expiry, second element is the data itself
+cache = {}  # First element in tuple is the time of caching, second element is the data itself
 
 
 # HELPER FUNCTIONS
+def get_from_cache(key, cache_duration):
+    """
+    Helper function that attempts to get a value from the cache.
+    """
+
+    # Get current time
+    now = round(datetime.datetime.now().timestamp())
+
+    # Check if the cache contains the key and if the cache expired or not
+    if key in cache and now <= cache[key][0] + cache_duration:
+        return True, cache[key][1]
+
+    # Invalid cache value
+    return False, None
+
+
+def add_to_cache(key, data):
+    """
+    Helper function that helps add data to the cache.
+    """
+
+    now = round(datetime.datetime.now().timestamp())
+    cache[key] = (now, data)
+
+
 def make_json(status, status_code, **kwargs):
     """
     Helper function that forms a JSON response based on the status string, status code, and additional arguments.
@@ -48,16 +72,19 @@ def get_json_from_response(response):
     return response.json
 
 
+def get_latest_commit_timestamp():
+    repo = Repo(".")
+    latest_commit = list(repo.iter_commits("main", max_count=1))[0]
+    return int(latest_commit.committed_datetime.timestamp())
+
+
 # MAIN ROUTES
 @application.route("/get-raw-info")
 def get_raw_info():
-    # Get current time
-    now = round(datetime.datetime.now().timestamp())
+    # Try and get from the cache
+    success, raw_info = get_from_cache("raw_info", 300)
 
-    # Check if there is a cache and that the cache has yet to expire
-    if "raw_tag_info" in cache and now <= cache["raw_tag_info"][0]:
-        raw_info = cache["raw_tag_info"][1]
-    else:
+    if not success:
         # Form the URL
         url = f"https://api.github.com/repos/{AUDITRANSCRIBE_REPO}/tags"
 
@@ -68,8 +95,8 @@ def get_raw_info():
             # Save the response
             raw_info = response.text
 
-            # Update cache
-            cache["raw_tag_info"] = (now + CACHE_DURATION, raw_info)
+            # Update the cache
+            add_to_cache("raw_info", raw_info)
         else:
             return make_exception(
                 code=response.status_code,
@@ -161,6 +188,19 @@ def check_if_have_new_version():
         return make_json("OK", 200, is_latest=True)
     else:
         return make_json("OK", 200, is_latest=False, newer_tag=newer_tag)
+
+
+@application.route("/get-api-server-version")
+def get_api_server_version():
+    """
+    Retrieves the API server version.
+    """
+
+    success, api_server_version = get_from_cache("api_server_version", 86400)  # 1 day
+    if not success:
+        api_server_version = get_latest_commit_timestamp()
+        add_to_cache("api_server_version", api_server_version)
+    return make_json("OK", 200, api_server_version=api_server_version)
 
 
 # ERROR HANDLERS

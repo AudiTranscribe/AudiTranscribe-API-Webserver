@@ -1,7 +1,6 @@
 # IMPORTS
 import zipfile
-
-from git import Repo
+from application import get_latest_commit_timestamp
 
 # CONSTANTS
 FILES_TO_ADD = [
@@ -12,13 +11,6 @@ FILES_TO_ADD = [
     "requirements.txt",
     "wsgi.py",
 ]
-
-
-# HELPER FUNCTIONS
-def get_latest_commit_timestamp():
-    repo = Repo(".")
-    latest_commit = list(repo.iter_commits("main", max_count=1))[0]
-    return int(latest_commit.committed_datetime.timestamp())
 
 
 # MAIN CODE
