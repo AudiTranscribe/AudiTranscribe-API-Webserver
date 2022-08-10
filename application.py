@@ -6,7 +6,6 @@ import semver
 from flask import Flask, make_response, request
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
-from git import Repo
 from requests import get
 from werkzeug.exceptions import HTTPException
 
@@ -73,9 +72,9 @@ def get_json_from_response(response):
 
 
 def get_latest_commit_timestamp():
-    repo = Repo(".")
-    latest_commit = list(repo.iter_commits("main", max_count=1))[0]
-    return int(latest_commit.committed_datetime.timestamp())
+    with open("Latest Commit Timestamp.txt", "r") as f:
+        latest_timestamp = f.read()
+    return int(latest_timestamp)
 
 
 # MAIN ROUTES
