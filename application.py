@@ -1,9 +1,9 @@
 # IMPORTS
-import json
 import datetime
+import json
 
 import semver
-from flask import Flask, make_response
+from flask import Flask, make_response, request
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from requests import get
@@ -49,8 +49,8 @@ def get_json_from_response(response):
 
 
 # MAIN ROUTES
-@application.route("/raw-tag-info")
-def get_raw_tag_info():
+@application.route("/get-raw-info")
+def get_raw_info():
     # Get current time
     now = round(datetime.datetime.now().timestamp())
 
@@ -88,7 +88,7 @@ def get_versions():
     """
 
     # Get the raw tag info
-    raw_tag_info = get_json_from_response(get_raw_tag_info())
+    raw_tag_info = get_json_from_response(get_raw_info())
 
     if raw_tag_info.get("status", "ERROR") == "OK":
         # Parse response text as JSON
@@ -104,11 +104,22 @@ def get_versions():
         )
 
 
-@application.route("/latest-semver")
-def latest_semver():
+@application.route("/check-if-have-new-version")
+def check_if_have_new_version():
     """
-    Get the latest version tag in terms of semver versioning.
+    Checks if there is a new version that is newer than the current version.
+
+    Note: this assumes that the version string is prefixed with a `v`.
     """
+
+    # Get current version requested
+    current_version = request.args.get("current-version", None)
+    if current_version is None:
+        return make_exception(
+            code=400,
+            name="Invalid Request",
+            description="Did not include `current-version` with arguments."
+        )
 
     # Get all version tags
     versions_json = get_json_from_response(get_versions())
@@ -123,51 +134,33 @@ def latest_semver():
 
     # Check if there are any version tags
     num_tags = versions_json.get("count", 0)
-    latest_tag = None
+
+    try:
+        newer_tag = str(semver.VersionInfo.parse(current_version[1:]))  # Tag must be at least the current version
+    except ValueError as e:
+        return make_exception(code=400, name="Invalid Request", description=str(e))
 
     if num_tags != 0:
         # Get the version tags
         versions = versions_json.get("versions")
 
-        # Get latest tag in terms of semver version
-        latest_tag = str(semver.VersionInfo.parse(versions[0][1:]))
+        # Get latest newer tag in terms of semver version
+        try:
+            for i in range(num_tags):
+                version = str(semver.VersionInfo.parse(versions[i][1:]))
+                if semver.compare(newer_tag, version) == -1:  # Latest tag is smaller than the tag considered
+                    newer_tag = versions[i][1:]
+        except ValueError as e:
+            return make_exception(code=400, name="Invalid Request", description=str(e))
 
-        for i in range(1, num_tags):
-            curr_ver = str(semver.VersionInfo.parse(versions[i][1:]))
-            if semver.compare(latest_tag, curr_ver) == -1:  # Latest tag is smaller than the current tag
-                latest_tag = versions[i]  # We removed the "v" when parsing semver, so we add it back here
+    # Add the missing "v" in front of the version
+    newer_tag = "v" + newer_tag
 
-        # Add the missing "v" in front of the version
-        latest_tag = "v" + latest_tag
-
-    # Make and return the response
-    return make_json("OK", 200, latest_semver=latest_tag)
-
-
-@application.route("/latest-chrono")
-def latest_chronologically():
-    """
-    Get the latest tag in chronological order.
-    """
-
-    # Get the version tags as JSON
-    versions_json = get_json_from_response(get_versions())
-
-    # Check if fetched successfully
-    if versions_json.get("status", "ERROR") == "ERROR":
-        return make_exception(
-            code=versions_json.get("code", 500),
-            name=versions_json.get("name", "Fetch Error"),
-            description=versions_json.get("description")
-        )
-
-    # Try and get the latest tag
-    latest_chrono = None
-    if versions_json.get("count", 0) != 0:
-        latest_chrono = versions_json["versions"][0]
-
-    # Make and return the response
-    return make_json("OK", 200, latest_chrono=latest_chrono)
+    # Check if there was a newer tag
+    if newer_tag == current_version:
+        return make_json("OK", 200, is_latest=True)
+    else:
+        return make_json("OK", 200, is_latest=False, newer_tag=newer_tag)
 
 
 # ERROR HANDLERS
