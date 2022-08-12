@@ -13,12 +13,17 @@ from werkzeug.exceptions import HTTPException
 AUDITRANSCRIBE_REPO = "AudiTranscribe/AudiTranscribe"
 
 # SETUP
+# Set up flask application and limiter
 application = Flask(__name__)
 limiter = Limiter(
     application,
     key_func=get_remote_address,
-    default_limits=["2/second"]
+    default_limits=["2/second", "1200/hour"]
 )
+
+# Get API server version from file
+with open("API Server Version.txt", "r") as f:
+    apiServerVersion = int(f.read())
 
 # GLOBAL VARIABLES
 cache = {}  # First element in tuple is the time of caching, second element is the data itself
@@ -69,12 +74,6 @@ def get_json_from_response(response):
     """
 
     return response.json
-
-
-def get_latest_commit_timestamp():
-    with open("Latest Commit Timestamp.txt", "r") as f:
-        latest_timestamp = f.read()
-    return int(latest_timestamp)
 
 
 # MAIN ROUTES
@@ -195,11 +194,7 @@ def get_api_server_version():
     Retrieves the API server version.
     """
 
-    success, api_server_version = get_from_cache("api_server_version", 86400)  # 1 day
-    if not success:
-        api_server_version = get_latest_commit_timestamp()
-        add_to_cache("api_server_version", api_server_version)
-    return make_json("OK", 200, api_server_version=api_server_version)
+    return make_json("OK", 200, api_server_version=apiServerVersion)
 
 
 # ERROR HANDLERS
@@ -218,6 +213,10 @@ def make_exception(e=None, code=None, name=None, description=None):
 
     if description is None:
         description = e.description
+
+    # Specially handle the 429 Too Many Requests error
+    if code == 429:
+        return make_json("TOO MANY REQUESTS", code, code=int(code), name=name, description=description)
 
     # Make and return the JSON response
     return make_json("ERROR", code, code=int(code), name=name, description=description)

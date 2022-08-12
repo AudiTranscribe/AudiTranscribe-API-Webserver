@@ -8,7 +8,7 @@ FILES_TO_ADD = [
     ".gitattributes",
     ".gitignore",
     "application.py",
-    "Latest Commit Timestamp.txt",
+    "API Server Version.txt",
     "Procfile",
     "requirements.txt",
     "wsgi.py",
@@ -22,8 +22,8 @@ def get_latest_commit_timestamp():
     latest_commit = list(repo.iter_commits("main", max_count=1))[0]
     latest_timestamp = int(latest_commit.committed_datetime.timestamp())
 
-    # Update the "Latest Commit Timestamp.txt" file
-    with open("Latest Commit Timestamp.txt", "w") as timestamp_file:
+    # Update the API server version
+    with open("API Server Version.txt", "w") as timestamp_file:
         timestamp_file.write(str(latest_timestamp))
 
     # Return the latest timestamp value

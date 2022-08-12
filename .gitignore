@@ -153,5 +153,7 @@ cython_debug/
 .run/
 
 # Others
+logs
+
 .DS_Store
-Latest Commit Timestamp.txt
+API Server Version.txt
