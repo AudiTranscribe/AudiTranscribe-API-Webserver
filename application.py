@@ -197,6 +197,23 @@ def get_api_server_version():
     return make_json("OK", 200, api_server_version=apiServerVersion)
 
 
+@application.route("/test-api-server", methods=["GET", "POST"])
+@limiter.exempt()
+def test_api_server():
+    """
+    Function that tests the API server returning protocol.
+    """
+
+    if request.method == "GET":
+        # Check if the required parameters was sent along
+        if request.args.get("is-testing", False) is not False:
+            return make_json("OK", 200, data1="Hello World!", data2=False, data3=12.345, data4=678.9)
+        else:
+            return make_json("OK", 200, data1="Hello World!", data2=False, data3=12.345)
+    else:
+        return make_json("OK", 200, data1="Eggs and spam", data2=False, data3=12.345)
+
+
 # ERROR HANDLERS
 @application.errorhandler(HTTPException)
 def make_exception(e=None, code=None, name=None, description=None):
@@ -214,12 +231,23 @@ def make_exception(e=None, code=None, name=None, description=None):
     if description is None:
         description = e.description
 
-    # Specially handle the 429 Too Many Requests error
+    # Specially handle the "429 Too Many Requests" error
     if code == 429:
-        return make_json("TOO MANY REQUESTS", code, code=int(code), name=name, description=description)
+        return make_json("TOO MANY REQUESTS", 429, code=429, name=name, description=description)
 
     # Make and return the JSON response
     return make_json("ERROR", code, code=int(code), name=name, description=description)
+
+
+@application.errorhandler(405)
+def method_not_allowed_error_handler(_):
+    return make_json(
+        "METHOD NOT ALLOWED",
+        405,
+        code=405,
+        name="Method Not Allowed",
+        description=f"The '{request.method}' method is not allowed for the requested URL."
+    )
 
 
 # MAIN CODE
