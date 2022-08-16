@@ -197,19 +197,29 @@ def get_api_server_version():
     return make_json("OK", 200, api_server_version=apiServerVersion)
 
 
-@application.route("/test-api-server", methods=["GET", "POST"])
+@application.route("/test-api-server-get")
 @limiter.exempt()
-def test_api_server():
+def test_api_server_get():
     """
-    Function that tests the API server returning protocol.
+    Function that tests the API server returning protocol for GET requests.
     """
 
-    if request.method == "GET":
-        # Check if the required parameters was sent along
-        if request.args.get("is-testing", False) is not False:
-            return make_json("OK", 200, data1="Hello World!", data2=False, data3=12.345, data4=678.9)
-        else:
-            return make_json("OK", 200, data1="Hello World!", data2=False, data3=12.345)
+    # Check if the required parameters was sent along
+    if request.args.get("is-testing", False) is not False:
+        return make_json("OK", 200, data1="Hello World!", data2=False, data3=12.345, data4=678.9)
+    else:
+        return make_json("OK", 200, data1="Hello World!", data2=False, data3=12.345)
+
+
+@application.route("/test-api-server-post", methods=["POST"])
+@limiter.exempt()
+def test_api_server_post():
+    """
+    Function that tests the API server returning protocol for POST requests.
+    """
+
+    if request.form.get("is-testing", False) is not False:
+        return make_json("OK", 200, data1="Eggs and spam", data2=False, data3=12.345, data4=678.9)
     else:
         return make_json("OK", 200, data1="Eggs and spam", data2=False, data3=12.345)
 
