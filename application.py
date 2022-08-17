@@ -1,13 +1,17 @@
 # IMPORTS
+import base64
 import datetime
 import json
 
 import semver
+import tensorflow as tf
 from flask import Flask, make_response, request
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from requests import get
 from werkzeug.exceptions import HTTPException
+
+import src
 
 # CONSTANTS
 AUDITRANSCRIBE_REPO = "AudiTranscribe/AudiTranscribe"
@@ -24,6 +28,9 @@ limiter = Limiter(
 # Get API server version from file
 with open("API Server Version.txt", "r") as f:
     apiServerVersion = int(f.read())
+
+# Load the models
+myModel = tf.keras.models.load_model("resources/Key-Estimation.h5")
 
 # GLOBAL VARIABLES
 cache = {}  # First element in tuple is the time of caching, second element is the data itself
@@ -186,6 +193,38 @@ def check_if_have_new_version():
         return make_json("OK", 200, is_latest=True)
     else:
         return make_json("OK", 200, is_latest=False, newer_tag=newer_tag)
+
+
+@application.route("/estimate-music-key", methods=["POST"])
+# @limiter.limit("1/min")
+def estimate_music_key():
+    # Get the data sent by the user
+    base64_data = request.form.get("base64_data", None)
+
+    if base64_data is None:
+        return make_exception(
+            code=400,
+            name="Invalid Request",
+            description="No `base64_data` attribute provided."
+        )
+
+    # Decode the base64 data into byte data
+    bytes_ = base64.b64decode(base64_data)
+
+    # Convert into array data
+    data = src.conversion.bytes_to_3d_array(bytes_)
+
+    # Reshape the data for processing
+    data = data.reshape(list(data.shape) + [1])
+
+    # Estimate the key
+    try:
+        keys, probabilities = src.key_estimation.estimate_key(data, myModel, verbose=True)
+    except Exception as e:
+        return make_exception(e)
+
+    # Return as JSON data
+    return make_json("OK", 200, keys=keys, probabilities=probabilities)
 
 
 @application.route("/get-api-server-version")
