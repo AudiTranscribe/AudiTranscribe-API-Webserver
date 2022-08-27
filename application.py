@@ -1,6 +1,6 @@
 # IMPORTS
 import datetime
-import json
+import ujson
 
 import semver
 from flask import Flask, make_response, request
@@ -23,7 +23,7 @@ limiter = Limiter(
 
 # Get API server version from file
 with open("API Server Version.txt", "r") as f:
-    apiServerVersion = int(f.read())
+    apiServerVersion = f.read()
 
 # GLOBAL VARIABLES
 cache = {}  # First element in tuple is the time of caching, second element is the data itself
@@ -60,7 +60,7 @@ def make_json(status, status_code, **kwargs):
     Helper function that forms a JSON response based on the status string, status code, and additional arguments.
     """
 
-    response = make_response(json.dumps({
+    response = make_response(ujson.dumps({
         "status": status,
         **kwargs
     }), status_code)
@@ -117,7 +117,7 @@ def get_versions():
 
     if raw_tag_info.get("status", "ERROR") == "OK":
         # Parse response text as JSON
-        json_txt = json.loads(raw_tag_info.get("raw_info"))
+        json_txt = ujson.loads(raw_tag_info.get("raw_info"))
 
         # Get version tags only and return
         return make_json("OK", 200, count=len(json_txt), versions=[entry["name"] for entry in json_txt])
@@ -199,7 +199,7 @@ def get_api_server_version():
 
 @application.route("/test-api-server-get")
 @limiter.exempt()
-def test_api_server_get():
+def api_server_get():
     """
     Function that tests the API server returning protocol for GET requests.
     """
@@ -213,7 +213,7 @@ def test_api_server_get():
 
 @application.route("/test-api-server-post", methods=["POST"])
 @limiter.exempt()
-def test_api_server_post():
+def api_server_post():
     """
     Function that tests the API server returning protocol for POST requests.
     """
