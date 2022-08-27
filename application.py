@@ -22,7 +22,7 @@ limiter = Limiter(
     key_func=get_remote_address,
     default_limits=["2/second", "1200/hour"]
 )
-limiter.enabled = application.config.get("TESTING")
+limiter.enabled = not application.config.get("TESTING")
 
 # Get API server version from file
 with open("API Server Version.txt", "r") as f:
