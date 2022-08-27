@@ -1,0 +1,8 @@
+[run]
+omit =
+    # Omit testing directory
+    tests/*
+
+    # Omit packaging code
+    Package Contents Into ZIP.py
+    wsgi.py

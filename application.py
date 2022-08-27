@@ -1,6 +1,8 @@
 # IMPORTS
 import datetime
-import json
+import re
+
+import ujson
 
 import semver
 from flask import Flask, make_response, request
@@ -20,6 +22,7 @@ limiter = Limiter(
     key_func=get_remote_address,
     default_limits=["2/second", "1200/hour"]
 )
+limiter.enabled = not application.config.get("TESTING")
 
 # Get API server version from file
 with open("API Server Version.txt", "r") as f:
@@ -60,20 +63,12 @@ def make_json(status, status_code, **kwargs):
     Helper function that forms a JSON response based on the status string, status code, and additional arguments.
     """
 
-    response = make_response(json.dumps({
+    response = make_response(ujson.dumps({
         "status": status,
         **kwargs
     }), status_code)
     response.mimetype = "application/json"
     return response
-
-
-def get_json_from_response(response):
-    """
-    Helper function that retrieves the JSON data from the response.
-    """
-
-    return response.json
 
 
 # MAIN ROUTES
@@ -113,11 +108,11 @@ def get_versions():
     """
 
     # Get the raw tag info
-    raw_tag_info = get_json_from_response(get_raw_info())
+    raw_tag_info = get_raw_info().json
 
     if raw_tag_info.get("status", "ERROR") == "OK":
         # Parse response text as JSON
-        json_txt = json.loads(raw_tag_info.get("raw_info"))
+        json_txt = ujson.loads(raw_tag_info.get("raw_info"))
 
         # Get version tags only and return
         return make_json("OK", 200, count=len(json_txt), versions=[entry["name"] for entry in json_txt])
@@ -146,8 +141,16 @@ def check_if_have_new_version():
             description="Did not include `current-version` with arguments."
         )
 
+    # Check if the version (naively) matches an expected version tag
+    if re.match("v\\S+", current_version) is None:
+        return make_exception(
+            code=400,
+            name="Invalid Request",
+            description="Invalid semver format. Must start with a `v`."
+        )
+
     # Get all version tags
-    versions_json = get_json_from_response(get_versions())
+    versions_json = get_versions().json
 
     # Check if fetched successfully
     if versions_json.get("status", "ERROR") == "ERROR":
@@ -161,7 +164,7 @@ def check_if_have_new_version():
     num_tags = versions_json.get("count", 0)
 
     try:
-        newer_tag = str(semver.VersionInfo.parse(current_version[1:]))  # Tag must be at least the current version
+        newest_version = semver.VersionInfo.parse(current_version[1:])  # Tag must be at least the current version
     except ValueError as e:
         return make_exception(code=400, name="Invalid Request", description=str(e))
 
@@ -172,20 +175,20 @@ def check_if_have_new_version():
         # Get latest newer tag in terms of semver version
         try:
             for i in range(num_tags):
-                version = str(semver.VersionInfo.parse(versions[i][1:]))
-                if semver.compare(newer_tag, version) == -1:  # Latest tag is smaller than the tag considered
-                    newer_tag = versions[i][1:]
+                version = semver.VersionInfo.parse(versions[i][1:])
+                if newest_version.compare(version) == -1:  # Latest tag is smaller than the tag considered
+                    newest_version = version
         except ValueError as e:
             return make_exception(code=400, name="Invalid Request", description=str(e))
 
     # Add the missing "v" in front of the version
-    newer_tag = "v" + newer_tag
+    newest_version = "v" + str(newest_version)
 
     # Check if there was a newer tag
-    if newer_tag == current_version:
+    if newest_version == current_version:
         return make_json("OK", 200, is_latest=True)
     else:
-        return make_json("OK", 200, is_latest=False, newer_tag=newer_tag)
+        return make_json("OK", 200, is_latest=False, newer_tag=newest_version)
 
 
 @application.route("/get-api-server-version")
@@ -199,7 +202,7 @@ def get_api_server_version():
 
 @application.route("/test-api-server-get")
 @limiter.exempt()
-def test_api_server_get():
+def api_server_get():
     """
     Function that tests the API server returning protocol for GET requests.
     """
@@ -213,7 +216,7 @@ def test_api_server_get():
 
 @application.route("/test-api-server-post", methods=["POST"])
 @limiter.exempt()
-def test_api_server_post():
+def api_server_post():
     """
     Function that tests the API server returning protocol for POST requests.
     """
@@ -258,8 +261,3 @@ def method_not_allowed_error_handler(_):
         name="Method Not Allowed",
         description=f"The '{request.method}' method is not allowed for the requested URL."
     )
-
-
-# MAIN CODE
-if __name__ == "__main__":
-    application.run()
