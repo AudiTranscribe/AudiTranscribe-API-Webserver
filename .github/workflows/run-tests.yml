@@ -29,8 +29,8 @@ jobs:
         uses: codecov/codecov-action@v3
         with:
           files: coverage.xml
-      - name: Upload PyTest Coverage HTML File
-        uses: actions/upload-artifact@v3
-        with:
-          name: PyTest_Coverage_Report
-          path: htmlcov
+#      - name: Upload PyTest Coverage HTML File
+#        uses: actions/upload-artifact@v3
+#        with:
+#          name: PyTest_Coverage_Report
+#          path: htmlcov
