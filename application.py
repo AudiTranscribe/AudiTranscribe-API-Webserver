@@ -1,5 +1,7 @@
 # IMPORTS
 import datetime
+import re
+
 import ujson
 
 import semver
@@ -20,10 +22,11 @@ limiter = Limiter(
     key_func=get_remote_address,
     default_limits=["2/second", "1200/hour"]
 )
+limiter.enabled = application.config.get("TESTING")
 
 # Get API server version from file
 with open("API Server Version.txt", "r") as f:
-    apiServerVersion = f.read()
+    apiServerVersion = int(f.read())
 
 # GLOBAL VARIABLES
 cache = {}  # First element in tuple is the time of caching, second element is the data itself
@@ -68,14 +71,6 @@ def make_json(status, status_code, **kwargs):
     return response
 
 
-def get_json_from_response(response):
-    """
-    Helper function that retrieves the JSON data from the response.
-    """
-
-    return response.json
-
-
 # MAIN ROUTES
 @application.route("/get-raw-info")
 def get_raw_info():
@@ -113,7 +108,7 @@ def get_versions():
     """
 
     # Get the raw tag info
-    raw_tag_info = get_json_from_response(get_raw_info())
+    raw_tag_info = get_raw_info().json
 
     if raw_tag_info.get("status", "ERROR") == "OK":
         # Parse response text as JSON
@@ -146,8 +141,16 @@ def check_if_have_new_version():
             description="Did not include `current-version` with arguments."
         )
 
+    # Check if the version (naively) matches an expected version tag
+    if re.match("v\\S+", current_version) is None:
+        return make_exception(
+            code=400,
+            name="Invalid Request",
+            description="Invalid semver format. Must start with a `v`."
+        )
+
     # Get all version tags
-    versions_json = get_json_from_response(get_versions())
+    versions_json = get_versions().json
 
     # Check if fetched successfully
     if versions_json.get("status", "ERROR") == "ERROR":
@@ -161,7 +164,7 @@ def check_if_have_new_version():
     num_tags = versions_json.get("count", 0)
 
     try:
-        newer_tag = str(semver.VersionInfo.parse(current_version[1:]))  # Tag must be at least the current version
+        newest_version = semver.VersionInfo.parse(current_version[1:])  # Tag must be at least the current version
     except ValueError as e:
         return make_exception(code=400, name="Invalid Request", description=str(e))
 
@@ -172,20 +175,20 @@ def check_if_have_new_version():
         # Get latest newer tag in terms of semver version
         try:
             for i in range(num_tags):
-                version = str(semver.VersionInfo.parse(versions[i][1:]))
-                if semver.compare(newer_tag, version) == -1:  # Latest tag is smaller than the tag considered
-                    newer_tag = versions[i][1:]
+                version = semver.VersionInfo.parse(versions[i][1:])
+                if newest_version.compare(version) == -1:  # Latest tag is smaller than the tag considered
+                    newest_version = version
         except ValueError as e:
             return make_exception(code=400, name="Invalid Request", description=str(e))
 
     # Add the missing "v" in front of the version
-    newer_tag = "v" + newer_tag
+    newest_version = "v" + str(newest_version)
 
     # Check if there was a newer tag
-    if newer_tag == current_version:
+    if newest_version == current_version:
         return make_json("OK", 200, is_latest=True)
     else:
-        return make_json("OK", 200, is_latest=False, newer_tag=newer_tag)
+        return make_json("OK", 200, is_latest=False, newer_tag=newest_version)
 
 
 @application.route("/get-api-server-version")
