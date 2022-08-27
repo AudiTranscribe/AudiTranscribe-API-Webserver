@@ -1,8 +1,6 @@
 # IMPORTS
 import ujson
 
-import application
-
 
 # TESTS
 def test_get_raw_info(client):
@@ -100,7 +98,7 @@ def test_get_api_server_version(client):
     """Tests the API server version endpoint."""
 
     # Get the current API server version
-    with open("APi Server Version.txt", "r") as f:
+    with open("API Server Version.txt", "r") as f:
         current_version = int(f.read())
 
     # Get the response from the server
