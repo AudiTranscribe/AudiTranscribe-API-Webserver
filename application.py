@@ -261,8 +261,3 @@ def method_not_allowed_error_handler(_):
         name="Method Not Allowed",
         description=f"The '{request.method}' method is not allowed for the requested URL."
     )
-
-
-# MAIN CODE
-if __name__ == "__main__":
-    application.run()
