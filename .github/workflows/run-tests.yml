@@ -21,7 +21,7 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
       - name: Make Fake API Server Version File
-        run: echo -123456 > API Server Version.txt
+        run: echo -123456 > "API Server Version.txt"
       - name: Test with Pytest
         run: pytest --cov . --cov-report=xml --cov-report=html --cov-config=.coveragerc
         shell: bash
