@@ -193,13 +193,10 @@ def check_if_have_new_version():
         versions = versions_json.get("versions")
 
         # Get latest newer tag in terms of semver version
-        try:
-            for i in range(num_tags):
-                version = semver.VersionInfo.parse(versions[i][1:])
-                if newest_version.compare(version) == -1:  # Latest tag is smaller than the tag considered
-                    newest_version = version
-        except ValueError as e:
-            return make_exception(code=400, name="Invalid Request", description=str(e))
+        for i in range(num_tags):
+            version = semver.VersionInfo.parse(versions[i][1:])
+            if newest_version.compare(version) == -1:  # Latest tag is smaller than the tag considered
+                newest_version = version
 
     # Add the missing "v" in front of the version
     newest_version = "v" + str(newest_version)
