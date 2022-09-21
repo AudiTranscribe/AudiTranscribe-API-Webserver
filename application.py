@@ -24,7 +24,7 @@ import re
 
 import semver
 import ujson
-from flask import Flask, make_response, request, redirect
+from flask import Flask, make_response, request, send_from_directory
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from requests import get
@@ -252,31 +252,30 @@ def download_ffmpeg():
             description=f"Invalid signature option '{signature_needed}'. Must be either 'TRUE' or 'FALSE'."
         )
 
-    # Try and read the FFmpeg data from cache
-    success, ffmpeg_data = get_from_cache("ffmpeg_data", 7200)
+    # Try and read the FFmpeg signatures from cache
+    success, ffmpeg_signatures = get_from_cache("ffmpeg_signatures", 3600)  # 1 day
     if not success:
-        # Read FFmpeg data from files
-        ffmpeg_data = {}
-        with open("data/ffmpeg-data/MACOS.json") as p:  # `p` for file pointer
-            ffmpeg_data["MACOS"] = ujson.load(p)
+        # Read FFmpeg signatures from files
+        ffmpeg_signatures = {}
+        with open("data/ffmpeg/ffmpeg-5.1.1-MACOS.sha256") as p:  # `p` for file pointer
+            ffmpeg_signatures["MACOS"] = p.read().strip()
 
-        with open("data/ffmpeg-data/WINDOWS.json") as p:  # `p` for file pointer
-            ffmpeg_data["WINDOWS"] = ujson.load(p)
+        with open("data/ffmpeg/ffmpeg-5.1.1-WINDOWS.sha256") as p:
+            ffmpeg_signatures["WINDOWS"] = p.read().strip()
 
-        # Cache
-        add_to_cache("ffmpeg_data", ffmpeg_data)
+        # Cache the signatures
+        add_to_cache("ffmpeg_signatures", ffmpeg_signatures)
 
     # Get required information
     if signature_needed == "TRUE":
-        # Just need SHA256 for the required platform
         return make_json(
             "OK",
             200,
-            signature=ffmpeg_data[platform_string]["signature"]
+            signature=ffmpeg_signatures[platform_string]
         )
     else:
-        # Just redirect to the download
-        return redirect(ffmpeg_data[platform_string]["url"])
+        # Send FFmpeg ZIP files
+        return send_from_directory("data/ffmpeg", f"ffmpeg-5.1.1-{platform_string}.zip")
 
 
 @application.route("/test-api-server-get")

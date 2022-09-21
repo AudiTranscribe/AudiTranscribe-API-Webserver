@@ -19,6 +19,8 @@ OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 """
 
 # IMPORTS
+from io import BytesIO
+
 import ujson
 
 
@@ -118,11 +120,16 @@ def test_download_ffmpeg(client):
     """Tests the downloading of FFmpeg."""
 
     # Test 1: macOS without signature
-    response = client.get("/download-ffmpeg?platform=macOS")  # First time should not load from cache
-    assert response.text.find("https://evermeet.cx/ffmpeg/ffmpeg-5.1.1.zip") != -1
+    response = client.get("/download-ffmpeg?platform=macOS")
+
+    with open("data/ffmpeg/ffmpeg-5.1.1-MACOS.zip", "rb") as f:
+        actual_data = BytesIO(f.read())
+        actual_data.seek(0)
+
+    assert response.data == actual_data.read()
 
     # Test 2: macOS with signature
-    response = client.get("/download-ffmpeg?platform=macOS&signature_needed=true")  # Second time should be from cache
+    response = client.get("/download-ffmpeg?platform=macOS&signature_needed=true")  # First time should load from file
     json_data = response.json
 
     assert json_data["status"] == "OK"
@@ -130,14 +137,19 @@ def test_download_ffmpeg(client):
 
     # Test 3: Windows without signature
     response = client.get("/download-ffmpeg?platform=Windows")
-    assert response.text.find("https://www.gyan.dev/ffmpeg/builds/packages/ffmpeg-5.1.1-essentials_build.zip") != -1
+
+    with open("data/ffmpeg/ffmpeg-5.1.1-WINDOWS.zip", "rb") as f:
+        actual_data = BytesIO(f.read())
+        actual_data.seek(0)
+
+    assert response.data == actual_data.read()
 
     # Test 4: Windows with signature
-    response = client.get("/download-ffmpeg?platform=Windows&signature_needed=true")
+    response = client.get("/download-ffmpeg?platform=Windows&signature_needed=true")  # Second time should be from cache
     json_data = response.json
 
     assert json_data["status"] == "OK"
-    assert json_data["signature"] == "94cbc37674a18dc2db4f0f8f56240043d4d1c742444db8acd27e2881bb0575fe"
+    assert json_data["signature"] == "00cc2b9279369bd4c104b1f316ac03a80b0844ac6d1dc4f549fc09d21d9bd29f"
 
     # Test 5: Request without platform
     response = client.get("/download-ffmpeg")
