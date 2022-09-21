@@ -22,10 +22,9 @@ OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 import datetime
 import re
 
-import ujson
-
 import semver
-from flask import Flask, make_response, request
+import ujson
+from flask import Flask, make_response, request, redirect
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from requests import get
@@ -215,6 +214,69 @@ def get_api_server_version():
     """
 
     return make_json("OK", 200, api_server_version=apiServerVersion)
+
+
+@application.route("/download-ffmpeg")
+def download_ffmpeg():
+    """
+    URL that downloads FFmpeg.
+
+    Expects two arguments.
+    - The first is `platform`, which can either be "MACOS" or "WINDOWS".
+    - The second is `signature_needed`, which can either be "true" or "false".
+    """
+
+    # Get arguments
+    platform_string = request.args.get("platform", "").upper()
+    signature_needed = request.args.get("signature_needed", "FALSE").upper()
+
+    # If the platform is missing or invalid return an error
+    if platform_string == "":
+        return make_exception(
+            code=400,
+            name="Invalid Request",
+            description="A platform must be specified."
+        )
+    if platform_string not in {"MACOS", "WINDOWS"}:
+        return make_exception(
+            code=400,
+            name="Invalid Request",
+            description=f"Invalid platform '{platform_string}'. Must be either 'MACOS' or 'WINDOWS'."
+        )
+
+    # If `signature_needed` is not "TRUE" or "FALSE" return an error
+    if signature_needed not in {"TRUE", "FALSE"}:
+        return make_exception(
+            code=400,
+            name="Invalid Request",
+            description=f"Invalid signature option '{signature_needed}'. Must be either 'TRUE' or 'FALSE'."
+        )
+
+    # Try and read the FFmpeg data from cache
+    success, ffmpeg_data = get_from_cache("ffmpeg_data", 7200)
+    if not success:
+        # Read FFmpeg data from files
+        ffmpeg_data = {}
+        with open("data/ffmpeg-data/MACOS.json") as p:  # `p` for file pointer
+            ffmpeg_data["MACOS"] = ujson.load(p)
+
+        with open("data/ffmpeg-data/WINDOWS.json") as p:  # `p` for file pointer
+            ffmpeg_data["WINDOWS"] = ujson.load(p)
+
+        # Cache
+        add_to_cache("ffmpeg_data", ffmpeg_data)
+
+    # Get required information
+    if signature_needed == "TRUE":
+        # Just need SHA256 for the required platform
+        return make_json(
+            "OK",
+            200,
+            signature=ffmpeg_data[platform_string]["signature"]
+        )
+    else:
+        # Just redirect to the download
+        return redirect(ffmpeg_data[platform_string]["url"])
 
 
 @application.route("/test-api-server-get")

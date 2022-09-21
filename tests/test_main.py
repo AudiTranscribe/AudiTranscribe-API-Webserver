@@ -114,6 +114,59 @@ def test_check_if_have_new_version(client):
     assert json_data["description"] == "0.123 is not valid SemVer string"
 
 
+def test_download_ffmpeg(client):
+    """Tests the downloading of FFmpeg."""
+
+    # Test 1: macOS without signature
+    response = client.get("/download-ffmpeg?platform=macOS")  # First time should not load from cache
+    assert response.text.find("https://evermeet.cx/ffmpeg/ffmpeg-5.1.1.zip") != -1
+
+    # Test 2: macOS with signature
+    response = client.get("/download-ffmpeg?platform=macOS&signature_needed=true")  # Second time should be from cache
+    json_data = response.json
+
+    assert json_data["status"] == "OK"
+    assert json_data["signature"] == "9cd8808b50da3fcf434110572464db67f9ea3613b0731d27ce2eddddea3dfc14"
+
+    # Test 3: Windows without signature
+    response = client.get("/download-ffmpeg?platform=Windows")
+    assert response.text.find("https://www.gyan.dev/ffmpeg/builds/packages/ffmpeg-5.1.1-essentials_build.zip") != -1
+
+    # Test 4: Windows with signature
+    response = client.get("/download-ffmpeg?platform=Windows&signature_needed=true")
+    json_data = response.json
+
+    assert json_data["status"] == "OK"
+    assert json_data["signature"] == "94cbc37674a18dc2db4f0f8f56240043d4d1c742444db8acd27e2881bb0575fe"
+
+    # Test 5: Request without platform
+    response = client.get("/download-ffmpeg")
+    json_data = response.json
+
+    assert json_data["status"] == "ERROR"
+    assert json_data["code"] == 400
+    assert json_data["name"] == "Invalid Request"
+    assert json_data["description"] == "A platform must be specified."
+
+    # Test 6: Request with invalid platform
+    response = client.get("/download-ffmpeg?platform=nonexistent")
+    json_data = response.json
+
+    assert json_data["status"] == "ERROR"
+    assert json_data["code"] == 400
+    assert json_data["name"] == "Invalid Request"
+    assert json_data["description"] == "Invalid platform 'NONEXISTENT'. Must be either 'MACOS' or 'WINDOWS'."
+
+    # Test 7: Request with invalid `signature_needed` string
+    response = client.get("/download-ffmpeg?platform=macos&signature_needed=maybe")
+    json_data = response.json
+
+    assert json_data["status"] == "ERROR"
+    assert json_data["code"] == 400
+    assert json_data["name"] == "Invalid Request"
+    assert json_data["description"] == "Invalid signature option 'MAYBE'. Must be either 'TRUE' or 'FALSE'."
+
+
 def test_get_api_server_version(client):
     """Tests the API server version endpoint."""
 
