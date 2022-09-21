@@ -149,7 +149,7 @@ def test_download_ffmpeg(client):
     json_data = response.json
 
     assert json_data["status"] == "OK"
-    assert json_data["signature"] == "00cc2b9279369bd4c104b1f316ac03a80b0844ac6d1dc4f549fc09d21d9bd29f"
+    assert json_data["signature"] == "875086ba05f95e767c46362b08567c093f132f80d08c7d0ebd09f1b2f34dfc6f"
 
     # Test 5: Request without platform
     response = client.get("/download-ffmpeg")
