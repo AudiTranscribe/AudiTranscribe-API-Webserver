@@ -182,6 +182,7 @@ def test_download_ffmpeg(client):
 def test_download_audio_resource(client):
     """Tests the downloading of the audio resource."""
 
+    # Test 1: Request for the audio file
     response = client.get("/download-audio-resource")
 
     with open("data/audio/Breakfast.wav", "rb") as f:
@@ -189,6 +190,20 @@ def test_download_audio_resource(client):
         actual_data.seek(0)
 
     assert response.data == actual_data.read()
+
+    # Test 2: Request for the signature
+    response = client.get("/download-audio-resource?signature_needed=true")  # First time should read from file
+    json_data = response.json
+
+    assert json_data["status"] == "OK"
+    assert json_data["signature"] == "568cc1514eebca6dc53cc3c454f611ad58e0cca227597dcd8e1264af179876ed"
+
+    # Test 3: Request for the signature, again
+    response = client.get("/download-audio-resource?signature_needed=true")  # Second time should be from cache
+    json_data = response.json
+
+    assert json_data["status"] == "OK"
+    assert json_data["signature"] == "568cc1514eebca6dc53cc3c454f611ad58e0cca227597dcd8e1264af179876ed"
 
 
 def test_get_api_server_version(client):

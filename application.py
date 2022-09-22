@@ -280,7 +280,38 @@ def download_ffmpeg():
 
 @application.route("/download-audio-resource")
 def download_audio_resource():
-    return send_from_directory("data/audio", "Breakfast.wav")
+    """URL that downloads the audio resource needed to fix the note delay."""
+
+    # Get argument
+    signature_needed = request.args.get("signature_needed", "FALSE").upper()
+
+    # If `signature_needed` is not "TRUE" or "FALSE" return an error
+    if signature_needed not in {"TRUE", "FALSE"}:
+        return make_exception(
+            code=400,
+            name="Invalid Request",
+            description=f"Invalid signature option '{signature_needed}'. Must be either 'TRUE' or 'FALSE'."
+        )
+
+    # Try and read from cache
+    success, audio_resource_signature = get_from_cache("audio_resource_signature", 3600)  # 1 day
+    if not success:
+        # Read signature from file
+        with open("data/audio/Breakfast.sha256", "r") as p:
+            audio_resource_signature = p.read().strip()
+
+        # Cache the signature
+        add_to_cache("audio_resource_signature", audio_resource_signature)
+
+    # Get required information
+    if signature_needed == "TRUE":
+        return make_json(
+            "OK",
+            200,
+            signature=audio_resource_signature
+        )
+    else:
+        return send_from_directory("data/audio", "Breakfast.wav")
 
 
 @application.route("/test-api-server-get")
