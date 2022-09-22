@@ -278,6 +278,11 @@ def download_ffmpeg():
         return send_from_directory("data/ffmpeg", f"ffmpeg-5.1.1-{platform_string}.zip")
 
 
+@application.route("/download-audio-resource")
+def download_audio_resource():
+    return send_from_directory("data/audio", "Breakfast.wav")
+
+
 @application.route("/test-api-server-get")
 @limiter.exempt()
 def api_server_get():

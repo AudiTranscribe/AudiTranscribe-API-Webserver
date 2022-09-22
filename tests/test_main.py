@@ -179,6 +179,18 @@ def test_download_ffmpeg(client):
     assert json_data["description"] == "Invalid signature option 'MAYBE'. Must be either 'TRUE' or 'FALSE'."
 
 
+def test_download_audio_resource(client):
+    """Tests the downloading of the audio resource."""
+
+    response = client.get("/download-audio-resource")
+
+    with open("data/audio/Breakfast.wav", "rb") as f:
+        actual_data = BytesIO(f.read())
+        actual_data.seek(0)
+
+    assert response.data == actual_data.read()
+
+
 def test_get_api_server_version(client):
     """Tests the API server version endpoint."""
 
