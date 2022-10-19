@@ -205,39 +205,7 @@ def test_download_audio_resource(client):
     assert json_data["status"] == "OK"
     assert json_data["signature"] == "af1378cd5ca07dec4fa896289cf1f476d16fb48c82c95111731a20e4a1ab28d4"
 
-    # Test 4: Request for the audio file (MP3)
-    response = client.get("/download-audio-resource?is_mp3=true")
-
-    with open("data/audio/Breakfast.mp3", "rb") as f:
-        actual_data = BytesIO(f.read())
-        actual_data.seek(0)
-
-    assert response.data == actual_data.read()
-
-    # Test 5: Request for the signature (MP3)
-    response = client.get("/download-audio-resource?signature_needed=true&is_mp3=true")
-    json_data = response.json
-
-    assert json_data["status"] == "OK"
-    assert json_data["signature"] == "89c18124e30c83da5085667ca86ad3618c327fcd4dd3f656601a1e2d6d3b5e49"
-
-    # Test 6: Request for the signature (MP3), again
-    response = client.get("/download-audio-resource?signature_needed=true&is_mp3=true")
-    json_data = response.json
-
-    assert json_data["status"] == "OK"
-    assert json_data["signature"] == "89c18124e30c83da5085667ca86ad3618c327fcd4dd3f656601a1e2d6d3b5e49"
-
-    # Test 7: Request with invalid `is_mp3` argument
-    response = client.get("/download-audio-resource?is_mp3=maybe")
-    json_data = response.json
-
-    assert json_data["status"] == "ERROR"
-    assert json_data["code"] == 400
-    assert json_data["name"] == "Invalid Request"
-    assert json_data["description"] == "Invalid MP3 option 'MAYBE'. Must be either 'TRUE' or 'FALSE'."
-
-    # Test 8: Request with invalid `signature_needed` argument
+    # Test 4: Request with invalid `signature_needed` argument
     response = client.get("/download-audio-resource?signature_needed=maybe")
     json_data = response.json
 
