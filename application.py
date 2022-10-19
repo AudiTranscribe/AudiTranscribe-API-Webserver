@@ -283,7 +283,16 @@ def download_audio_resource():
     """URL that downloads the audio resource needed to fix the note delay."""
 
     # Get argument
+    is_mp3 = request.args.get("is_mp3", "FALSE").upper()
     signature_needed = request.args.get("signature_needed", "FALSE").upper()
+
+    # If `is_mp3` is not "TRUE" or "FALSE" return an error
+    if is_mp3 not in {"TRUE", "FALSE"}:
+        return make_exception(
+            code=400,
+            name="Invalid Request",
+            description=f"Invalid MP3 option '{is_mp3}'. Must be either 'TRUE' or 'FALSE'."
+        )
 
     # If `signature_needed` is not "TRUE" or "FALSE" return an error
     if signature_needed not in {"TRUE", "FALSE"}:
@@ -293,15 +302,19 @@ def download_audio_resource():
             description=f"Invalid signature option '{signature_needed}'. Must be either 'TRUE' or 'FALSE'."
         )
 
-    # Try and read from cache
-    success, audio_resource_signature = get_from_cache("audio_resource_signature", 3600)  # 1 day
+    # Get the audio file extension requested
+    ext = "mp3" if is_mp3 == "TRUE" else "wav"
+
+    # Try and read the signature from cache
+    cache_key = f"audio_resource_signature_{ext}"
+    success, audio_resource_signature = get_from_cache(cache_key, 3600)  # 1 day
     if not success:
         # Read signature from file
-        with open("data/audio/Breakfast.wav.sha256", "r") as p:
+        with open(f"data/audio/Breakfast.{ext}.sha256", "r") as p:
             audio_resource_signature = p.read().strip()
 
         # Cache the signature
-        add_to_cache("audio_resource_signature", audio_resource_signature)
+        add_to_cache(f"audio_resource_signature_{ext}", audio_resource_signature)
 
     # Get required information
     if signature_needed == "TRUE":
@@ -311,7 +324,7 @@ def download_audio_resource():
             signature=audio_resource_signature
         )
     else:
-        return send_from_directory("data/audio", "Breakfast.wav")
+        return send_from_directory("data/audio", f"Breakfast.{ext}")
 
 
 @application.route("/test-api-server-get")
