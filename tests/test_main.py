@@ -205,7 +205,7 @@ def test_download_audio_resource(client):
     assert json_data["status"] == "OK"
     assert json_data["signature"] == "af1378cd5ca07dec4fa896289cf1f476d16fb48c82c95111731a20e4a1ab28d4"
 
-    # Test 4: Request for the audio file (WAV)
+    # Test 4: Request for the audio file (MP3)
     response = client.get("/download-audio-resource?is_mp3=true")
 
     with open("data/audio/Breakfast.mp3", "rb") as f:
@@ -214,14 +214,14 @@ def test_download_audio_resource(client):
 
     assert response.data == actual_data.read()
 
-    # Test 5: Request for the signature (WAV)
+    # Test 5: Request for the signature (MP3)
     response = client.get("/download-audio-resource?signature_needed=true&is_mp3=true")
     json_data = response.json
 
     assert json_data["status"] == "OK"
     assert json_data["signature"] == "89c18124e30c83da5085667ca86ad3618c327fcd4dd3f656601a1e2d6d3b5e49"
 
-    # Test 6: Request for the signature (WAV), again
+    # Test 6: Request for the signature (MP3), again
     response = client.get("/download-audio-resource?signature_needed=true&is_mp3=true")
     json_data = response.json
 
