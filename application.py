@@ -257,10 +257,10 @@ def download_ffmpeg():
     if not success:
         # Read FFmpeg signatures from files
         ffmpeg_signatures = {}
-        with open("data/ffmpeg/ffmpeg-5.1.1-MACOS.sha256") as p:  # `p` for file pointer
+        with open("data/ffmpeg/ffmpeg-5.1.1-MACOS.zip.sha256") as p:  # `p` for file pointer
             ffmpeg_signatures["MACOS"] = p.read().strip()
 
-        with open("data/ffmpeg/ffmpeg-5.1.1-WINDOWS.sha256") as p:
+        with open("data/ffmpeg/ffmpeg-5.1.1-WINDOWS.zip.sha256") as p:
             ffmpeg_signatures["WINDOWS"] = p.read().strip()
 
         # Cache the signatures
@@ -297,7 +297,7 @@ def download_audio_resource():
     success, audio_resource_signature = get_from_cache("audio_resource_signature", 3600)  # 1 day
     if not success:
         # Read signature from file
-        with open("data/audio/Breakfast.sha256", "r") as p:
+        with open("data/audio/Breakfast.wav.sha256", "r") as p:
             audio_resource_signature = p.read().strip()
 
         # Cache the signature
